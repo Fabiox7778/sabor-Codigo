@@ -207,15 +207,15 @@ async function main() {
     await prisma.pedido.createMany({
         data: [
             { clienteId: clientes[0].id, total: 31.9, status: 'ABERTO' },
-            { clienteId: clientes[1].id, total: 52.9, status: 'FECHADO' },
-            { clienteId: clientes[2].id, total: 28.9, status: 'ABERTO' },
-            { clienteId: clientes[3].id, total: 40.9, status: 'FECHADO' },
+            { clienteId: clientes[1].id, total: 52.9, status: 'PAGO' },
+            { clienteId: clientes[2].id, total: 28.9, status: 'CANCELADO' },
+            { clienteId: clientes[3].id, total: 40.9, status: 'PAGO' },
             { clienteId: clientes[4].id, total: 15.0, status: 'ABERTO' },
-            { clienteId: clientes[5].id, total: 44.9, status: 'FECHADO' },
+            { clienteId: clientes[5].id, total: 44.9, status: 'PAGO' },
             { clienteId: clientes[6].id, total: 32.9, status: 'ABERTO' },
-            { clienteId: clientes[7].id, total: 36.0, status: 'FECHADO' },
+            { clienteId: clientes[7].id, total: 36.0, status: 'CANCELADO' },
             { clienteId: clientes[8].id, total: 20.0, status: 'ABERTO' },
-            { clienteId: clientes[9].id, total: 48.9, status: 'FECHADO' },
+            { clienteId: clientes[9].id, total: 48.9, status: 'CANCELADO' },
         ],
     });
 
