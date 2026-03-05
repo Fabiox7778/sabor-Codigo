@@ -1,16 +1,6 @@
 import prisma from '../utils/prismaClient.js';
 
 export default class PedidoModel {
-    /**
-     * Representação em memória de um pedido conforme definido em prisma/schema.prisma.
-     *
-     * @param {Object} options
-     * @param {number|null} options.id
-     * @param {number|null} options.clienteId
-     * @param {number|string|null} options.total  (pode ser string/number, será convertido em Decimal)
-     * @param {string|null} options.status        ('ABERTO','PAGO','CANCELADO')
-     * @param {Date|null} options.criadoEm
-     */
     constructor({
         id = null,
         clienteId = null,
@@ -26,7 +16,6 @@ export default class PedidoModel {
     }
 
     async criar() {
-        // clienteId é obrigatório de acordo com o schema
         const data = {
             clienteId: this.clienteId,
         };
