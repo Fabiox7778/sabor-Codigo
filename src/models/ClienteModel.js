@@ -16,12 +16,23 @@ export default class ClienteModel {
         this.ativo = ativo;
     }
 
-    // ======= REGRAS DE NEGOCIO =======
+    // ======= REGRAS DE NEGOCIO ======
 
-    validarTelefone(telefone) {
+    validarNome(nome) {
+        if (!nome || nome.trim().length < 3 || nome.trim().length > 100) throw new Error("Nome deve conter entre 3 e 100 caracteres.");
+        return nome.trim();
+    }
+
+    validarTelefone(telefone) { // remover tudo que nao for numero
         const telefoneNumerico = telefone.replace(/\D/g, '');
         if (telefoneNumerico.length < 10 || telefoneNumerico.length > 11) throw new Error("Telefone deve conter 10 ou 11 dígitos numéricos.");
         return telefoneNumerico;
+    }
+
+    validarEmail(email) { //Tem que ter texto + @ + texto + . + texto, sem espaços
+        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!regex.test(email)) throw new Error("Email em formato inválido.")
+        return email.toLowerCase();
     }
 
     validarCPF(cpf) {
@@ -38,18 +49,42 @@ export default class ClienteModel {
         return cepNumerico;
     }
 
+    // ======= INTEGRACAO ViaCEP =======
+
+    async buscarEnderecoViaCep(cep) {
+        try {
+            const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+
+            if (!resposta.ok) throw new Error("Serviço ViaCEP indisponível no momento.");
+
+            const dados = await resposta.json();
+
+            if (dados.erro) throw new Error(`CEP ${cep} não encontrado.`);
+
+            return {
+                logradouro: dados.logradouro,
+                bairro: dados.bairro,
+                localidade: dados.localidade,
+                uf: dados.uf
+            };
+
+        } catch (error) {
+            if (error.message.includes("não encontrado") || error.message.includes("ViaCEP")) {
+                throw error;
+            } throw new Error("Serviço ViaCEP indisponível no momento.");
+        }
+    }
+
     async criar() {
 
-        // ======= VERIFICACOES DE OBRIGATORIEDADE =======
+        const nomeValidado = this.validarNome(this.nome);
+        const telefoneValidado = this.validarTelefone(this.telefone);
+        const emailValidado = this.validarEmail(this.email);
+        const cpfValidado = this.validarCPF(this.cpf);
+        const cepValidado = this.validarCEP(this.cep);
 
-        if (!this.nome) throw new Error("O campo 'nome' é obrigatório.");
-        if (!this.telefone) throw new Error("O campo 'telefone' é obrigatório.");
-        if (!this.email) throw new Error("O campo 'email' é obrigatório.");
-        if (!this.cpf) throw new Error("O campo 'cpf' é obrigatório.");
+        const endereco = await this.buscarEnderecoViaCep(cepValidado);
 
-        const telefoneValidado = this.validarTelefone(this.telefone)
-        const cpfValidado = this.validarCPF(this.cpf)
-        const cepValidado = this.validarCEP(this.cep)
 
         // ======= VERIFICACOES DE DUPLICIDADE =======
 
@@ -63,25 +98,28 @@ export default class ClienteModel {
         });
         if (telefoneExistente) throw new Error("Telefone já cadastrado para outro cliente.");
 
+        const emailExistente = await prisma.cliente.findUnique({
+            where: { email: emailValidado }
+        });
+        if (emailExistente) throw new Error("Email já cadastrado no sistema.");
+
         return prisma.cliente.create({
             data: {
-                nome: this.nome,
+                nome: nomeValidado,
                 telefone: telefoneValidado,
-                email: this.email,
+                email: emailValidado,
                 cpf: cpfValidado,
                 cep: cepValidado,
-                logradouro: this.logradouro,
-                bairro: this.bairro,
-                localidade: this.localidade,
-                uf: this.uf,
+                logradouro: endereco.logradouro,
+                bairro: endereco.bairro,
+                localidade: endereco.localidade,
+                uf: endereco.uf,
                 ativo: this.ativo
             },
         });
     }
 
     async atualizar() {
-
-        if (!this.id) throw new Error("ID é obrigatório para atualização.");
 
         const clienteExistente = await prisma.cliente.findUnique({
             where: { id: this.id }
@@ -90,7 +128,7 @@ export default class ClienteModel {
 
         const dataUpdate = {};
 
-        if (this.nome) dataUpdate.nome = this.nome;
+        if (this.nome) dataUpdate.nome = this.validarNome(this.nome);
 
         if (this.telefone) {
             const telefoneValidado = this.validarTelefone(this.telefone);
@@ -108,7 +146,19 @@ export default class ClienteModel {
             dataUpdate.telefone = telefoneValidado;
         }
 
-        if (this.email) dataUpdate.email = this.email;
+        if (this.email) {
+            const emailValidado = this.validarEmail(this.email);
+
+            if (emailValidado !== clienteExistente.email) {
+                const emailExistente = await prisma.cliente.findUnique({
+                    where: { email: emailValidado }
+                });
+
+                if (emailExistente) throw new Error("Email já cadastrado no sistema.");
+            }
+
+            dataUpdate.email = emailValidado;
+        }
 
         if (this.cpf) {
             const cpfValidado = this.validarCPF(this.cpf);
@@ -124,14 +174,20 @@ export default class ClienteModel {
             dataUpdate.cpf = cpfValidado;
         }
 
-        if (this.cep) {
-            dataUpdate.cep = this.validarCEP(this.cep);
+        if (this.cep !== null) {
+            const cepValidado = this.validarCEP(this.cep);
+
+            if (cepValidado !== clienteExistente.cep) {
+                const endereco = await this.buscarEnderecoViaCep(cepValidado);
+
+                dataUpdate.cep = cepValidado;
+                dataUpdate.logradouro = endereco.logradouro;
+                dataUpdate.bairro = endereco.bairro;
+                dataUpdate.localidade = endereco.localidade;
+                dataUpdate.uf = endereco.uf;
+            }
         }
 
-        if (this.logradouro !== undefined) dataUpdate.logradouro = this.logradouro;
-        if (this.bairro !== undefined) dataUpdate.bairro = this.bairro;
-        if (this.localidade !== undefined) dataUpdate.localidade = this.localidade;
-        if (this.uf !== undefined) dataUpdate.uf = this.uf;
         if (this.ativo !== undefined) dataUpdate.ativo = this.ativo;
 
         return prisma.cliente.update({
@@ -142,8 +198,6 @@ export default class ClienteModel {
 
     async deletar() {
 
-        if (!this.id) throw new Error("ID é obrigatório para deletar.");
-
         const cliente = await prisma.cliente.findUnique({
             where: { id: this.id },
             include: {
@@ -153,7 +207,9 @@ export default class ClienteModel {
             }
         });
 
-        if (!cliente) throw new Error("Cliente não encontrado.");
+        if (!cliente) {
+            throw new Error("Cliente não encontrado.");
+        }
 
         if (cliente.pedidos.length > 0) throw new Error("Não é possível deletar cliente com pedido em status ABERTO.");
 
@@ -166,19 +222,16 @@ export default class ClienteModel {
         if (filtros.nome) where.nome = { contains: filtros.nome, mode: 'insensitive' };
         if (filtros.cpf) where.cpf = filtros.cpf.replace(/\D/g, '');
         if (filtros.ativo !== undefined) where.ativo = filtros.ativo === 'true' || filtros.ativo === true;
-        if (Object.keys(where).length === 0) {
-            throw new Error("Informe pelo menos um parâmetro para filtro.");
-        }
 
         return prisma.cliente.findMany({
             where,
-            orderBy: { nome: "asc" }
+            orderBy: { id: "asc" }
         });
     }
 
     static async buscarPorId(id) {
-        const data = await prisma.cliente.findUnique({ where: { id } });
-        if (!data) return null;
-        return new ClienteModel(data);
+        return prisma.cliente.findUnique({
+            where: { id }
+        });
     }
 }
