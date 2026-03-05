@@ -3,10 +3,10 @@ import * as controller from '../controllers/pedidoController.js';
 
 const router = express.Router();
 
-router.post('/pedido', controller.criar);
-router.get('/pedido', controller.buscarTodos);
-router.get('/pedido/:id', controller.buscarPorId);
-router.put('/pedido/:id', controller.atualizar);
-router.delete('/pedido/:id', controller.deletar);
+router.post('/', controller.criar);
+router.get('/', controller.buscarTodos);
+router.get('/:id', controller.buscarPorId);
+router.put('/:id', controller.atualizar);
+router.delete('/:id', controller.deletar);
 
 export default router;
