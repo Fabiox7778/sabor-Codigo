@@ -11,9 +11,6 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
     console.log('🌱 Resetando tabela exemplo...');
 
-    // Remove todos os registros
-    // await prisma.exemplo.deleteMany();
-
     console.log('📦 Inserindo clientes...');
 
     await prisma.cliente.createMany({
@@ -198,7 +195,6 @@ async function main() {
         ],
     });
 
-    // Buscar registros inseridos
     const clientes = await prisma.cliente.findMany();
     const produtos = await prisma.produto.findMany();
 
