@@ -1,4 +1,5 @@
 import PedidoModel from '../models/pedidoModel.js';
+import prisma from '../utils/prismaClient.js';
 
 export const criar = async (req, res) => {
     try {
@@ -6,7 +7,7 @@ export const criar = async (req, res) => {
             return res.status(400).json({ error: 'Corpo da requisição vazio. Envie os dados!' });
         }
 
-        const { clienteId, total, status } = req.body;
+        const { clienteId } = req.body;
 
         if (clienteId === undefined || clienteId === null) {
             return res.status(400).json({ error: 'O campo "clienteId" é obrigatório!' });
@@ -18,16 +19,24 @@ export const criar = async (req, res) => {
                 .json({ error: 'O campo "clienteId" deve ser um número válido.' });
         }
 
-        const pedidoData = { clienteId: clienteInt };
-        if (total !== undefined && total !== null) {
-            const tot = parseFloat(total);
-            if (isNaN(tot))
-                return res.status(400).json({ error: 'O campo "total" deve ser numérico.' });
-            pedidoData.total = tot;
+        const cliente = await prisma.cliente.findUnique({
+            where: { id: clienteInt },
+        });
+
+        if (!cliente) {
+            return res.status(404).json({ error: 'Cliente não encontrado.' });
         }
-        if (status) {
-            pedidoData.status = status;
+
+        if (cliente.ativo === false) {
+            return res.status(400).json({
+                error: 'Não é possível criar um pedido para esse cliente inativo.',
+            });
         }
+
+        const pedidoData = {
+            clienteId: clienteInt,
+            status: 'ABERTO',
+        };
 
         const pedido = new PedidoModel(pedidoData);
         const data = await pedido.criar();
@@ -61,7 +70,7 @@ export const buscarPorId =async (req, res) => {
         if (isNaN(id)) {
             return res.status(400).json({ error: 'O ID enviado não é um número válido'});
         }
-        
+
         const pedido = await PedidoModel.buscarPorId(parseInt(id));
 
         if (!pedido) {
@@ -97,15 +106,23 @@ export const atualizar = async (req, res) => {
                 return res.status(400).json({ error: 'O campo "clienteId" deve ser numérico.' });
             pedido.clienteId = c;
         }
+        
         if (req.body.total !== undefined) {
             const t = parseFloat(req.body.total);
             if (isNaN(t))
                 return res.status(400).json({ error: 'O campo "total" deve ser numérico.' });
             pedido.total = t;
         }
+
         if (req.body.status !== undefined) {
+            if (req.body.status === "CANCELADO" && pedido.status !== "ABERTO") {
+                return res.status(400).json({
+                    error: 'Só é possível cancelar um pedido que esteja ABERTO.'
+              });
+            }
+
             pedido.status = req.body.status;
-        }
+      }
 
         const data = await pedido.atualizar();
 
