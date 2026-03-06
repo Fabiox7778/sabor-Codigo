@@ -1,4 +1,4 @@
-import prisma from '../../../src/utils/prismaClient.js';
+import prisma from '../utils/prismaClient.js';
 
 export default class ProdutoModel {
     constructor({
