@@ -1,8 +1,19 @@
 import prisma from '../utils/prismaClient.js';
 
 export default class ClienteModel {
-    constructor({ id = null, nome = null, telefone = null, email = null, cpf = null, cep = null, logradouro = null, bairro = null, localidade = null, uf = null, ativo = true } = {}) {
-
+    constructor({
+        id = null,
+        nome = null,
+        telefone = null,
+        email = null,
+        cpf = null,
+        cep = null,
+        logradouro = null,
+        bairro = null,
+        localidade = null,
+        uf = null,
+        ativo = true,
+    } = {}) {
         this.id = id;
         this.nome = nome;
         this.telefone = telefone;
@@ -19,32 +30,36 @@ export default class ClienteModel {
     // ======= REGRAS DE NEGOCIO ======
 
     validarNome(nome) {
-        if (!nome || nome.trim().length < 3 || nome.trim().length > 100) throw new Error("Nome deve conter entre 3 e 100 caracteres.");
+        if (!nome || nome.trim().length < 3 || nome.trim().length > 100)
+            throw new Error('Nome deve conter entre 3 e 100 caracteres.');
         return nome.trim();
     }
 
-    validarTelefone(telefone) { // remover tudo que nao for numero
+    validarTelefone(telefone) {
+        // remover tudo que nao for numero
         const telefoneNumerico = telefone.replace(/\D/g, '');
-        if (telefoneNumerico.length < 10 || telefoneNumerico.length > 11) throw new Error("Telefone deve conter 10 ou 11 dígitos numéricos.");
+        if (telefoneNumerico.length < 10 || telefoneNumerico.length > 11)
+            throw new Error('Telefone deve conter 10 ou 11 dígitos numéricos.');
         return telefoneNumerico;
     }
 
-    validarEmail(email) { //Tem que ter texto + @ + texto + . + texto, sem espaços
+    validarEmail(email) {
+        //Tem que ter texto + @ + texto + . + texto, sem espaços
         const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!regex.test(email)) throw new Error("Email em formato inválido.")
+        if (!regex.test(email)) throw new Error('Email em formato inválido.');
         return email.toLowerCase();
     }
 
     validarCPF(cpf) {
         const cpfNumerico = cpf.replace(/\D/g, '');
-        if (!/^\d{11}$/.test(cpfNumerico)) throw new Error("CPF deve conter 11 dígitos numéricos.");
+        if (!/^\d{11}$/.test(cpfNumerico)) throw new Error('CPF deve conter 11 dígitos numéricos.');
         return cpfNumerico;
     }
 
     validarCEP(cep) {
         const cepNumerico = cep.replace(/\D/g, '');
         if (!/^\d{8}$/.test(cepNumerico)) {
-            throw new Error("CEP deve conter exatamente 8 dígitos numéricos.");
+            throw new Error('CEP deve conter exatamente 8 dígitos numéricos.');
         }
         return cepNumerico;
     }
@@ -55,7 +70,7 @@ export default class ClienteModel {
         try {
             const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
 
-            if (!resposta.ok) throw new Error("Serviço ViaCEP indisponível no momento.");
+            if (!resposta.ok) throw new Error('Serviço ViaCEP indisponível no momento.');
 
             const dados = await resposta.json();
 
@@ -65,18 +80,17 @@ export default class ClienteModel {
                 logradouro: dados.logradouro,
                 bairro: dados.bairro,
                 localidade: dados.localidade,
-                uf: dados.uf
+                uf: dados.uf,
             };
-
         } catch (error) {
-            if (error.message.includes("não encontrado") || error.message.includes("ViaCEP")) {
+            if (error.message.includes('não encontrado') || error.message.includes('ViaCEP')) {
                 throw error;
-            } throw new Error("Serviço ViaCEP indisponível no momento.");
+            }
+            throw new Error('Serviço ViaCEP indisponível no momento.');
         }
     }
 
     async criar() {
-
         const nomeValidado = this.validarNome(this.nome);
         const telefoneValidado = this.validarTelefone(this.telefone);
         const emailValidado = this.validarEmail(this.email);
@@ -85,23 +99,22 @@ export default class ClienteModel {
 
         const endereco = await this.buscarEnderecoViaCep(cepValidado);
 
-
         // ======= VERIFICACOES DE DUPLICIDADE =======
 
         const cpfExistente = await prisma.cliente.findUnique({
-            where: { cpf: cpfValidado }
+            where: { cpf: cpfValidado },
         });
-        if (cpfExistente) throw new Error("CPF já cadastrado no sistema.");
+        if (cpfExistente) throw new Error('CPF já cadastrado no sistema.');
 
         const telefoneExistente = await prisma.cliente.findUnique({
-            where: { telefone: telefoneValidado }
+            where: { telefone: telefoneValidado },
         });
-        if (telefoneExistente) throw new Error("Telefone já cadastrado para outro cliente.");
+        if (telefoneExistente) throw new Error('Telefone já cadastrado para outro cliente.');
 
         const emailExistente = await prisma.cliente.findUnique({
-            where: { email: emailValidado }
+            where: { email: emailValidado },
         });
-        if (emailExistente) throw new Error("Email já cadastrado no sistema.");
+        if (emailExistente) throw new Error('Email já cadastrado no sistema.');
 
         return prisma.cliente.create({
             data: {
@@ -114,17 +127,16 @@ export default class ClienteModel {
                 bairro: endereco.bairro,
                 localidade: endereco.localidade,
                 uf: endereco.uf,
-                ativo: this.ativo
+                ativo: this.ativo,
             },
         });
     }
 
     async atualizar() {
-
         const clienteExistente = await prisma.cliente.findUnique({
-            where: { id: this.id }
+            where: { id: this.id },
         });
-        if (!clienteExistente) throw new Error("Cliente não encontrado.");
+        if (!clienteExistente) throw new Error('Cliente não encontrado.');
 
         const dataUpdate = {};
 
@@ -135,11 +147,11 @@ export default class ClienteModel {
 
             if (telefoneValidado !== clienteExistente.telefone) {
                 const telefoneExistente = await prisma.cliente.findUnique({
-                    where: { telefone: telefoneValidado }
+                    where: { telefone: telefoneValidado },
                 });
 
                 if (telefoneExistente) {
-                    throw new Error("Telefone já cadastrado para outro cliente.");
+                    throw new Error('Telefone já cadastrado para outro cliente.');
                 }
             }
 
@@ -151,10 +163,10 @@ export default class ClienteModel {
 
             if (emailValidado !== clienteExistente.email) {
                 const emailExistente = await prisma.cliente.findUnique({
-                    where: { email: emailValidado }
+                    where: { email: emailValidado },
                 });
 
-                if (emailExistente) throw new Error("Email já cadastrado no sistema.");
+                if (emailExistente) throw new Error('Email já cadastrado no sistema.');
             }
 
             dataUpdate.email = emailValidado;
@@ -165,10 +177,10 @@ export default class ClienteModel {
 
             if (cpfValidado !== clienteExistente.cpf) {
                 const cpfExistente = await prisma.cliente.findUnique({
-                    where: { cpf: cpfValidado }
+                    where: { cpf: cpfValidado },
                 });
 
-                if (cpfExistente) throw new Error("CPF já cadastrado no sistema.");
+                if (cpfExistente) throw new Error('CPF já cadastrado no sistema.');
             }
 
             dataUpdate.cpf = cpfValidado;
@@ -192,26 +204,26 @@ export default class ClienteModel {
 
         return prisma.cliente.update({
             where: { id: this.id },
-            data: dataUpdate
+            data: dataUpdate,
         });
     }
 
     async deletar() {
-
         const cliente = await prisma.cliente.findUnique({
             where: { id: this.id },
             include: {
                 pedidos: {
-                    where: { status: "ABERTO" }
-                }
-            }
+                    where: { status: 'ABERTO' },
+                },
+            },
         });
 
         if (!cliente) {
-            throw new Error("Cliente não encontrado.");
+            throw new Error('Cliente não encontrado.');
         }
 
-        if (cliente.pedidos.length > 0) throw new Error("Não é possível deletar cliente com pedido em status ABERTO.");
+        if (cliente.pedidos.length > 0)
+            throw new Error('Não é possível deletar cliente com pedido em status ABERTO.');
 
         return prisma.cliente.delete({ where: { id: this.id } });
     }
@@ -221,17 +233,96 @@ export default class ClienteModel {
 
         if (filtros.nome) where.nome = { contains: filtros.nome, mode: 'insensitive' };
         if (filtros.cpf) where.cpf = filtros.cpf.replace(/\D/g, '');
-        if (filtros.ativo !== undefined) where.ativo = filtros.ativo === 'true' || filtros.ativo === true;
+        if (filtros.ativo !== undefined)
+            where.ativo = filtros.ativo === 'true' || filtros.ativo === true;
 
         return prisma.cliente.findMany({
             where,
-            orderBy: { id: "asc" }
+            orderBy: { id: 'asc' },
         });
     }
 
     static async buscarPorId(id) {
         return prisma.cliente.findUnique({
-            where: { id }
+            where: { id },
         });
+
+        if (!cliente) {
+            throw new Error("Cliente não encontrado.");
+        }
+    }
+
+    static async buscarCoordenadas(cidade) {
+        const resposta = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${cidade}&count=1&language=pt&countryCode=BR`,
+        );
+
+        const dados = await resposta.json();
+
+        if (!dados.results || dados.results.length === 0) {
+            return null;
+        }
+
+        return {
+            latitude: dados.results[0].latitude,
+            longitude: dados.results[0].longitude,
+        };
+    }
+
+    static async buscarClima(latitude, longitude) {
+        const resposta = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weathercode&timezone=America/Sao_Paulo`,
+        );
+
+        const dados = await resposta.json();
+
+        return dados.current;
+    }
+
+    static gerarSugestao(temperature_2m, weathercode) {
+
+        if (temperature_2m >= 28) {
+            return "🌞 Dia quente! Destaque combos com bebida gelada."
+        }
+
+        if (temperature_2m <= 18) {
+            return "🥶 Dia frio! Destaque cafés e lanches quentes."
+        }
+
+        if (weathercode >= 51) {
+            return "🌧 Dia chuvoso! Ofereça promoções para delivery."
+        }
+
+        return "🌤 Clima agradável! Aproveite para divulgar combos da casa."
+
+    }
+
+    static async buscarClimaCliente(id) {
+        const cliente = await prisma.cliente.findUnique({
+            where: { id },
+        });
+
+        if (!cliente) {
+            throw new Error("Cliente não encontrado.");
+        }
+
+        try {
+            const coordenadas = await this.buscarCoordenadas(cliente.localidade);
+
+            if (!coordenadas) return { clima: null }
+
+            const clima = await this.buscarClima(coordenadas.latitude, coordenadas.longitude);
+
+            const sugestao = this.gerarSugestao(clima.temperature_2m, clima.weathercode);
+
+            return {
+                temperatura: clima.temperature_2m,
+                chove: clima.weathercode >= 51,
+                quente: clima.temperature_2m >= 28,
+                sugestao,
+            }
+        } catch (error) {
+            return { clima: null }
+        }
     }
 }
