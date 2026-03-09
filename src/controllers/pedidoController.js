@@ -88,71 +88,33 @@ export const atualizar = async (req, res) => {
     try {
         const { id } = req.params;
 
-        if (isNaN(id)) return res.status(400).json({ error: 'ID inválido.' });
-
-        if (!req.body) {
-            return res.status(400).json({ error: 'Corpo da requisição vazio. Envie os dados!' });
+        if (isNaN(id)) {
+            return res.status(400).json({ error: 'ID inválido.' });
         }
 
         const pedido = await PedidoModel.buscarPorId(parseInt(id));
 
         if (!pedido) {
-            return res.status(404).json({ error: 'Pedido não encontrado para atualizar.' });
+            return res.status(404).json({ error: 'Pedido não encontrado.' });
         }
 
-        if (req.body.clienteId !== undefined) {
-            const c = parseInt(req.body.clienteId);
-            if (isNaN(c))
-                return res.status(400).json({ error: 'O campo "clienteId" deve ser numérico.' });
-            pedido.clienteId = c;
-        }
-        
-        if (req.body.total !== undefined) {
-            const t = parseFloat(req.body.total);
-            if (isNaN(t))
-                return res.status(400).json({ error: 'O campo "total" deve ser numérico.' });
-            pedido.total = t;
+        if (pedido.status !== "ABERTO") {
+            return res.status(400).json({
+                error: 'Só é possível cancelar pedidos que estejam ABERTOS.'
+            });
         }
 
-        if (req.body.status !== undefined) {
-            if (req.body.status === "CANCELADO" && pedido.status !== "ABERTO") {
-                return res.status(400).json({
-                    error: 'Só é possível cancelar um pedido que esteja ABERTO.'
-              });
-            }
-
-            pedido.status = req.body.status;
-      }
+        pedido.status = "CANCELADO";
 
         const data = await pedido.atualizar();
 
-        res.json({ message: `O pedido com id ${data.id} foi atualizado com sucesso!`, data });
-    } catch (error) {
-        console.error('Erro ao atualizar:', error);
-        res.status(500).json({ error: 'Erro ao atualizar pedido.' });
-    }
-};
-
-export const deletar = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        if (isNaN(id)) return res.status(400).json({ error: 'ID inválido.'});
-
-        const pedido = await PedidoModel.buscarPorId(parseInt(id));
-
-        if (!pedido) {
-            return res.status(404).json({ error: 'Pedido não encontrado para deletar.'});
-        }
-
-        await pedido.deletar();
-
         res.json({
-            message: `O pedido com o id ${pedido.id} foi deletado com sucesso!`,
-            deletado: pedido,
+            message: `Pedido ${data.id} cancelado com sucesso!`,
+            data
         });
+
     } catch (error) {
-        console.error('Erro ao deletar:', error);
-        res.status(500).json({ error: 'Erro ao deletar pedido.'});
+        console.error('Erro ao cancelar pedido:', error);
+        res.status(500).json({ error: 'Erro ao cancelar pedido.' });
     }
 };

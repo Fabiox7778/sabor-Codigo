@@ -16,13 +16,12 @@ export default class PedidoModel {
     }
 
     async criar() {
-        const data = {
-            clienteId: this.clienteId,
-        };
+        const data = { clienteId: this.clienteId };
         if (this.total !== undefined && this.total !== null) data.total = this.total;
         if (this.status) data.status = this.status;
 
-        return prisma.pedido.create({ data });
+        const pedido = await prisma.pedido.create({ data });
+        return new PedidoModel(pedido);
     }
 
     async atualizar() {
@@ -31,32 +30,18 @@ export default class PedidoModel {
         if (this.total !== undefined) data.total = this.total;
         if (this.status !== undefined) data.status = this.status;
 
-        return prisma.pedido.update({ where: { id: this.id }, data });
-    }
-
-    async deletar() {
-        return prisma.pedido.delete({ where: { id: this.id } });
-    }
-
-    static async buscarTodos(filtros = {}) {
-        const where = {};
-
-        if (filtros.clienteId !== undefined) {
-            const id = parseInt(filtros.clienteId);
-            if (!isNaN(id)) where.clienteId = id;
-        }
-        if (filtros.status) where.status = filtros.status;
-        if (filtros.total !== undefined) {
-            const t = parseFloat(filtros.total);
-            if (!isNaN(t)) where.total = t;
-        }
-
-        return prisma.pedido.findMany({ where });
+        const pedido = await prisma.pedido.update({ where: { id: this.id }, data });
+        return new PedidoModel(pedido);
     }
 
     static async buscarPorId(id) {
-        const data = await prisma.pedido.findUnique({ where: { id } });
-        if (!data) return null;
-        return new PedidoModel(data);
+        const pedido = await prisma.pedido.findUnique({ where: { id } });
+        if (!pedido) return null;
+        return new PedidoModel(pedido);
+    }
+
+    static async buscarTodos() {
+        const pedidos = await prisma.pedido.findMany();
+        return pedidos.map((p) => new PedidoModel(p));
     }
 }
