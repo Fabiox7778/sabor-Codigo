@@ -12,8 +12,7 @@ export const criar = async (req, res) => {
         if (!pedidoId) return res.status(400).json({ error: 'O campo "pedidoId" é obrigatório!' });
         if (!produtoId)
             return res.status(400).json({ error: 'O campo "produtoId" é obrigatório!' });
-        if (!precoUnitario)
-            return res.status(400).json({ error: 'O campo "precoUnitario" é obrigatório!' });
+     
 
         const item = new itemPedidoModel(
             null,
