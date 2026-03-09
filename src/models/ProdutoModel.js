@@ -7,7 +7,7 @@ export default class ProdutoModel {
         descricao = null,
         categoria = null,
         preco = null,
-        disponivel = true
+        disponivel = true,
     } = {}) {
         this.id = id;
         this.nome = nome;
@@ -24,7 +24,7 @@ export default class ProdutoModel {
                 descricao: this.descricao,
                 categoria: this.categoria,
                 preco: this.preco,
-                disponivel: this.disponivel
+                disponivel: this.disponivel,
             },
         });
     }
@@ -37,35 +37,44 @@ export default class ProdutoModel {
                 descricao: this.descricao,
                 categoria: this.categoria,
                 preco: this.preco,
-                disponivel: this.disponivel
+                disponivel: this.disponivel,
             },
         });
     }
 
     async deletar() {
         return prisma.produto.delete({
-            where: { id: this.id }
+            where: { id: this.id },
         });
     }
 
     static async buscarTodos(filtros = {}) {
         const where = {};
 
-        if (filtros.nome)
-            where.nome = { contains: filtros.nome, mode: 'insensitive' };
+        if (filtros.nome) where.nome = { contains: filtros.nome, mode: 'insensitive' };
 
-        if (filtros.categoria)
-            where.categoria = filtros.categoria;
+        if (filtros.categoria) where.categoria = filtros.categoria;
 
-        if (filtros.disponivel !== undefined)
-            where.disponivel = filtros.disponivel === 'true';
+        if (filtros.disponivel !== undefined) where.disponivel = filtros.disponivel === 'true';
+
+        if (filtros.precoMin !== undefined || filtros.precoMax !== undefined) {
+            where.preco = {};
+
+            if (filtros.precoMin) {
+                where.preco.gte = Number(filtros.precoMin); //gte = maior ou igual
+            }
+
+            if (filtros.precoMax) {
+                where.preco.lte = Number(filtros.precoMax); //lte = menor ou igual
+            }
+        }
 
         return prisma.produto.findMany({ where });
     }
 
     static async buscarPorId(id) {
         const data = await prisma.produto.findUnique({
-            where: { id }
+            where: { id },
         });
 
         if (!data) return null;
@@ -74,14 +83,13 @@ export default class ProdutoModel {
     }
 
     static async verificarPedidoAberto(produtoId) {
-
         const item = await prisma.itemPedido.findFirst({
             where: {
                 produtoId: produtoId,
                 pedido: {
-                    status: 'ABERTO'
-                }
-            }
+                    status: 'ABERTO',
+                },
+            },
         });
 
         return item ? true : false;
