@@ -216,7 +216,7 @@ export const deletar = async (req, res) => {
             });
         }
 
-        const emPedidoAberto = await ProdutoModel.verificarPedidoAberto(id);
+        const emPedidoAberto = await ProdutoModel.verificarPedidoAberto(parseInt(id));
 
         if (emPedidoAberto) {
             return res.status(400).json({
@@ -224,10 +224,11 @@ export const deletar = async (req, res) => {
             });
         }
 
-        await produto.deletar();
+        produto.disponivel = false;
+        await produto.atualizar();
 
         res.json({
-            message: `O produto "${produto.nome}" foi deletado com sucesso!`,
+            message: `O produto "${produto.nome}" foi inativado com sucesso!`,
             deletado: produto,
         });
     } catch (error) {
